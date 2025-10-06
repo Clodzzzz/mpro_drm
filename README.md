@@ -1,34 +1,22 @@
 # MPRO DRM
 
 A simple DRM driver for VoCore MPRO screen.
+Updated to allow multiple screens on Pi.
+This has only been tested with Open Marine version of Pi on a 5 and up to 3 vocore screens.
 
-# Usage
+#Usage
 
-This repository provides multiple branches corresponding to different kernel versions. You can select the corresponding branch based on the kernel version you are using, and then execute the following command to install the module into the system.
-
-```
-git clone https://github.com/ieiao/mpro_drm.git
+sudo apt install raspberrypi-kernel-headers build-essential -y
+git config --global http.sslVerify false
+git clone https://github.com/clodzzzz/mpro_drm.git
 cd mpro_drm
-# Switch to the correct branch
-git checkout -t origin/6.10.y
 make
-sudo make install
-```
+sudo mkdir -p /lib/modules/$(uname -r)/kernel/drivers/mpro/
+sudo cp mpro.ko /lib/modules/$(uname -r)/kernel/drivers/mpro/
+sudo insmod mpro.ko 	# This loads it	
+sudo depmod -a		# This makes it permanant
 
-# Usage for Raspberry Pi OS
+sudo raspi-config
+Enable VNC
+Open VNC and then make screens active and rotate them
 
-> Note: At the time of writing this document, the latest Raspberry Pi OS uses 6.6 kernel.
-
-We can install the MPRO DRM driver into the Raspberry Pi OS through the following command line operations.
-
-```
-git clone https://github.com/ieiao/mpro_drm.git
-cd mpro_drm
-git checkout -t origin/6.6.y-dma
-make
-sudo make install
-```
-
-After executing the above command, you can test whether the driver can be loaded properly by restarting or executing the `sudo modprobe mpro` command.
-
-![](imgs/rpios.webp)
