@@ -49,6 +49,8 @@
 #define MODEL_3IN4		"MPRO-3IN4\n"
 #define MODEL_10IN		"MPRO-10\n"
 
+extern void drm_fbdev_generic_setup(struct drm_device *dev, unsigned int preferred_bpp);
+
 struct mpro_device {
 	struct drm_device dev;
 	struct device *dmadev;
@@ -345,10 +347,17 @@ static int mpro_conn_late_register(struct drm_connector *connector)
 {
 	struct mpro_device *mpro = to_mpro(connector->dev);
 	struct backlight_device *bl;
+	char *bl_name;
 
-	bl = backlight_device_register("mpro_backlight",
-					connector->kdev, mpro,
-					&mpro_bl_ops, NULL);
+	// Allocate memory for unique name
+	bl_name = kasprintf(GFP_KERNEL, "mpro_backlight_%d", connector->base.id);
+	if (!bl_name)
+		return -ENOMEM;
+
+	bl = backlight_device_register(bl_name, connector->kdev, mpro,
+				       &mpro_bl_ops, NULL);
+	kfree(bl_name); // Free after registration; driver copies the string internally
+
 	if (IS_ERR(bl)) {
 		drm_err(connector->dev, "Unable to register backlight device\n");
 		return -EIO;
