@@ -346,6 +346,7 @@ static const struct drm_connector_helper_funcs mpro_conn_helper_funcs = {
 	.get_modes = mpro_conn_get_modes,
 };
 
+
 static int mpro_conn_late_register(struct drm_connector *connector)
 {
 	struct mpro_device *mpro = to_mpro(connector->dev);
@@ -353,24 +354,27 @@ static int mpro_conn_late_register(struct drm_connector *connector)
 	struct usb_device *udev;
 	char *bl_name;
 
-	/* Get the USB device */
 	udev = interface_to_usbdev(mpro->interface);
 	if (!udev)
 		return -ENODEV;
 
-	/* Generate a unique name using USB device path (e.g., "1-1", "3-1") */
-	bl_name = kasprintf(GFP_KERNEL, "mpro_backlight_%s", udev->devpath);
+	/* Combine busnum and devpath to guarantee uniqueness */
+	bl_name = kasprintf(GFP_KERNEL, "mpro_backlight_%d_%s", udev->bus->busnum, udev->devpath);
 	if (!bl_name)
 		return -ENOMEM;
 
+	pr_info("Registering backlight with name: %s\n", bl_name);
+
 	bl = backlight_device_register(bl_name, connector->kdev, mpro,
 				       &mpro_bl_ops, NULL);
-	kfree(bl_name); // Safe to free immediately after registration
 
 	if (IS_ERR(bl)) {
 		drm_err(connector->dev, "Unable to register backlight device %s\n", bl_name);
+		kfree(bl_name);
 		return -EIO;
 	}
+
+	kfree(bl_name);  // Only free after we're sure it's registered
 
 	bl->props.brightness = 255;
 	bl->props.max_brightness = 255;
@@ -378,6 +382,9 @@ static int mpro_conn_late_register(struct drm_connector *connector)
 
 	return 0;
 }
+
+
+
 static void mpro_conn_early_unregister(struct drm_connector *connector)
 {
 	struct mpro_device *mpro = to_mpro(connector->dev);
@@ -900,6 +907,8 @@ err_put_device:
 	put_device(mpro->dmadev);
 	return ret;
 }
+
+
 
 static void mpro_usb_disconnect(struct usb_interface *interface)
 {
