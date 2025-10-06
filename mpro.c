@@ -405,9 +405,31 @@ static const struct drm_connector_funcs mpro_conn_funcs = {
 
 static int mpro_conn_init(struct mpro_device *mpro)
 {
+	struct usb_device *udev;
+	char *conn_name;
+	int ret;
+
 	drm_connector_helper_add(&mpro->conn, &mpro_conn_helper_funcs);
-	return drm_connector_init(&mpro->dev, &mpro->conn,
-				  &mpro_conn_funcs, DRM_MODE_CONNECTOR_USB);
+	ret = drm_connector_init(&mpro->dev, &mpro->conn,
+				 &mpro_conn_funcs, DRM_MODE_CONNECTOR_USB);
+	if (ret)
+		return ret;
+
+	/* Get USB info to generate a unique name */
+	udev = interface_to_usbdev(mpro->interface);
+	if (!udev)
+		return -ENODEV;
+
+	/* Use bus number and devpath to make it unique */
+	conn_name = kasprintf(GFP_KERNEL, "MPRO-Display-%d-%s", udev->bus->busnum, udev->devpath);
+	if (!conn_name)
+		return -ENOMEM;
+
+	/* Override the auto-generated connector name */
+	kfree(mpro->conn.name);             // Free old name if set
+	mpro->conn.name = conn_name;       // Set new name
+
+	return 0;
 }
 
 static void mpro_pipe_enable(struct drm_simple_display_pipe *pipe,
