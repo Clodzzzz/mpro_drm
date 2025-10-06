@@ -30,6 +30,8 @@
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_simple_kms_helper.h>
 #include <linux/slab.h> // for kfree
+#include <linux/usb.h>         // for USB device access
+#include <linux/device.h>
 
 #define DRIVER_NAME		"mpro"
 #define DRIVER_DESC		"VoCore Screen"
@@ -348,16 +350,22 @@ static int mpro_conn_late_register(struct drm_connector *connector)
 {
 	struct mpro_device *mpro = to_mpro(connector->dev);
 	struct backlight_device *bl;
+	struct usb_device *udev;
 	char *bl_name;
 
-	// Allocate memory for unique name
-	bl_name = kasprintf(GFP_KERNEL, "mpro_backlight_%d", connector->base.id);
+	/* Get the USB device */
+	udev = interface_to_usbdev(mpro->interface);
+	if (!udev)
+		return -ENODEV;
+
+	/* Generate a unique name using USB device number */
+	bl_name = kasprintf(GFP_KERNEL, "mpro_backlight_%d", udev->devnum);
 	if (!bl_name)
 		return -ENOMEM;
 
 	bl = backlight_device_register(bl_name, connector->kdev, mpro,
 				       &mpro_bl_ops, NULL);
-	kfree(bl_name); // Free after registration; driver copies the string internally
+	kfree(bl_name); // Free after registration
 
 	if (IS_ERR(bl)) {
 		drm_err(connector->dev, "Unable to register backlight device\n");
