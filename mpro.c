@@ -2,6 +2,7 @@
 /*
  * Copyright 2019 Hans de Goede <hdegoede@redhat.com>
  */
+// Version rollback
 
 #include <linux/module.h>
 #include <linux/pm.h>
@@ -220,30 +221,23 @@ static int mpro_update_frame(struct mpro_device *mpro, unsigned int len)
 			    len, NULL, MPRO_MAX_DELAY);
 }
 
-static int mpro_buf_copy(void *dst, struct iosys_map *src_map,
-                         struct drm_framebuffer *fb, struct drm_rect *clip)
+static int mpro_buf_copy(void *dst, struct iosys_map *src_map, struct drm_framebuffer *fb,
+			 struct drm_rect *clip)
 {
-    int ret;
-    struct iosys_map dst_map;
-    unsigned int dst_pitch;
+	int ret;
+	struct iosys_map dst_map;
 
-    iosys_map_set_vaddr(&dst_map, dst);
+	iosys_map_set_vaddr(&dst_map, dst);
 
-    // Calculate pitch: width (in pixels) * bytes per pixel (RGB565 = 2)
-    dst_pitch = drm_rect_width(clip) * 2;
+	ret = drm_gem_fb_begin_cpu_access(fb, DMA_FROM_DEVICE);
+	if (ret)
+		return ret;
 
-    // Begin CPU access for reading the framebuffer
-    ret = drm_gem_fb_begin_cpu_access(fb, DMA_FROM_DEVICE);
-    if (ret)
-        return ret;
+	drm_fb_xrgb8888_to_rgb565(&dst_map, NULL, src_map, fb, clip, false);
 
-    // Perform the format conversion
-    drm_fb_xrgb8888_to_rgb565(&dst_map, &dst_pitch, src_map, fb, clip, NULL, false);
+	drm_gem_fb_end_cpu_access(fb, DMA_FROM_DEVICE);
 
-    // End CPU access
-    drm_gem_fb_end_cpu_access(fb, DMA_FROM_DEVICE);
-
-    return 0;
+	return 0;
 }
 
 static void mpro_fb_mark_dirty(struct iosys_map *src, struct drm_framebuffer *fb,
@@ -926,7 +920,7 @@ static int mpro_usb_probe(struct usb_interface *interface,
 	if (ret)
 		goto err_put_device;
 
-	//drm_fbdev_generic_setup(dev, 0);
+	drm_fbdev_generic_setup(dev, 0);
 
 	ret = mpro_touch_init(interface, mpro);
 
