@@ -926,7 +926,7 @@ static int mpro_usb_probe(struct usb_interface *interface,
 	if (ret)
 		goto err_put_device;
 
-	#drm_fbdev_generic_setup(dev, 0);
+	//drm_fbdev_generic_setup(dev, 0);
 
 	ret = mpro_touch_init(interface, mpro);
 
