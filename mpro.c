@@ -232,7 +232,8 @@ static int mpro_buf_copy(void *dst, struct iosys_map *src_map, struct drm_frameb
 	if (ret)
 		return ret;
 
-	drm_fb_xrgb8888_to_rgb565(&dst_map, NULL, src_map, fb, clip, false);
+	unsigned int dst_pitch = drm_fb_clip_width(clip) * 2;
+	drm_fb_xrgb8888_to_rgb565(&dst_map, &dst_pitch, src_map, fb, clip, false);
 
 	drm_gem_fb_end_cpu_access(fb, DMA_FROM_DEVICE);
 
